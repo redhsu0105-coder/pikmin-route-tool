@@ -3,26 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌈 GPX 萬能助手 - 最終整合版</title>
+    <title>🌈 GPX 萬能助手 - 精確路徑版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root {
-            --primary: #FF85A1;
-            --secondary: #77DDFF;
-            --bg: #FFF5F7;
-            --card-bg: #FFFFFF;
-        }
+        :root { --primary: #FF85A1; --secondary: #77DDFF; --bg: #FFF5F7; --card-bg: #FFFFFF; }
         body { font-family: "Microsoft JhengHei", sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; background-color: var(--bg); color: #555; }
         .card { background: var(--card-bg); padding: 25px; border-radius: 25px; box-shadow: 0 10px 25px rgba(255, 133, 161, 0.1); margin-bottom: 20px; border: 3px solid #FFD1DC; }
         h2 { color: var(--primary); margin-top: 0; display: flex; align-items: center; gap: 10px; font-size: 1.4rem; }
-        textarea { width: 100%; height: 120px; margin: 10px 0; border: 2px solid #FFE4E1; border-radius: 15px; padding: 12px; box-sizing: border-box; outline: none; font-size: 0.9em; }
+        textarea { width: 100%; height: 120px; margin: 10px 0; border: 2px solid #FFE4E1; border-radius: 15px; padding: 12px; box-sizing: border-box; outline: none; }
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         label { display: block; font-size: 0.85em; color: #886666; margin-bottom: 5px; font-weight: bold; }
         select, input { padding: 12px; border-radius: 12px; border: 2px solid #F0F0F0; width: 100%; box-sizing: border-box; background: #FAFAFA; outline: none; }
         button.main-btn { background: linear-gradient(135deg, var(--primary), #FF6B81); color: white; border: none; cursor: pointer; font-weight: bold; padding: 14px; border-radius: 12px; font-size: 16px; width: 100%; margin-top: 10px; box-shadow: 0 5px 15px rgba(255,133,161,0.3); }
         #map { height: 350px; width: 100%; border-radius: 20px; border: 3px solid #FFD1DC; margin-top: 10px; }
-        .file-box { background: #FFF9FA; border: 3px dashed #FFD1DC; padding: 30px; text-align: center; border-radius: 20px; cursor: pointer; color: var(--primary); font-weight: bold; transition: 0.3s; }
-        .file-box:hover { background: #FFE4E1; }
+        .file-box { background: #FFF9FA; border: 3px dashed #FFD1DC; padding: 30px; text-align: center; border-radius: 20px; cursor: pointer; color: var(--primary); font-weight: bold; }
         #fileStatus { margin-top: 10px; font-weight: bold; text-align: center; color: #50C878; }
         .mode-selector { background: #FFF0F3; padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid #FFD1DC; }
         .leaflet-tooltip-own { background: rgba(255, 255, 255, 0.9); border: 1px solid var(--primary); color: var(--primary); font-weight: bold; font-size: 11px; padding: 1px 3px; border-radius: 4px; }
@@ -31,7 +25,7 @@
 <body>
 
 <div class="card">
-    <h2>🗺️ 路徑即時預覽</h2>
+    <h2>🗺️ 即時預覽 (僅功能1顯示環狀連線)</h2>
     <div id="map"></div>
 </div>
 
@@ -39,34 +33,33 @@
     <h2>🌺 功能 1~3：種花路徑產生器</h2>
     <label>🍭 請貼入原始座標 (緯度, 經度):</label>
     <textarea id="coordsInput" oninput="updatePreviewFromText()" placeholder="例如：25.033, 121.565"></textarea>
-
     <div class="controls">
-        <div><label>📍 國家地名</label><input type="text" id="locName" value="土耳其"></div>
+        <div><label>📍 地點名稱</label><input type="text" id="locName" value="地點"></div>
         <div><label>🆔 編號</label><input type="text" id="locID" value="01"></div>
-        <div><label>📏 半徑 (m)</label><input type="number" id="radius" value="30" oninput="updatePreviewFromText()"></div>
+        <div><label>📏 種花半徑 (m)</label><input type="number" id="radius" value="30" oninput="updatePreviewFromText()"></div>
         <div>
-            <label>🎡 模式</label>
+            <label>🎡 跑法模式</label>
             <select id="mode" onchange="updatePreviewFromText()">
-                <option value="flower_pass2">種花 + 回訪二次 ✨</option>
-                <option value="flower_only">純種花模式 🌺</option>
-                <option value="pass_only">純座標路徑 🚶</option>
+                <option value="flower_pass2">功能1：種花+回訪 (首尾相連) ✨</option>
+                <option value="flower_only">功能2：純種花 (不相連) 🌺</option>
+                <option value="pass_only">功能3：純座標路徑 (不相連) 🚶</option>
             </select>
         </div>
-        <button class="main-btn" onclick="generateGPX()" style="grid-column: span 2;">下載種花 GPX 🎀</button>
+        <button class="main-btn" onclick="generateGPX()" style="grid-column: span 2;">下載 GPX 🎀</button>
     </div>
 </div>
 
 <div class="card">
-    <h2>☁️ 功能 4：GPX 快捷轉換下載</h2>
+    <h2>☁️ 功能 4：GPX 格式雙向轉換器</h2>
     <div class="mode-selector">
-        <label>🔄 轉換目標格式：</label>
+        <label>🔄 轉換目標：</label>
         <select id="convMode">
-            <option value="rte2wpt">🎯 轉為 Fake GPS 格式 (wpt)</option>
-            <option value="wpt2rte">🕹️ 轉為 Joystick 格式 (rte)</option>
+            <option value="rte2wpt">🎯 Joystick 轉 Fake GPS (rte ⮕ wpt)</option>
+            <option value="wpt2rte">🕹️ Fake GPS 轉 Joystick (wpt ⮕ rte)</option>
         </select>
     </div>
     <div class="file-box" onclick="document.getElementById('fileInput').click()">
-        ✨ 點擊上傳 GPX 並自動下載 ✨
+        ✨ 點擊上傳 GPX 並執行轉換 ✨
         <input type="file" id="fileInput" accept=".gpx" style="display:none" onchange="handleConversion(this)">
     </div>
     <div id="fileStatus"></div>
@@ -78,110 +71,88 @@ var map = L.map('map').setView([25.033, 121.565], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 var previewLayer = L.layerGroup().addTo(map);
 
-// 預覽功能
-function updatePreview(coords) {
+function updatePreview(coords, forceLoop = false) {
     previewLayer.clearLayers();
     if (coords.length === 0) return;
-    let pts = coords.map(c => [c.lat, c.lon]);
     
-    // 畫線
-    L.polyline(pts, {color: '#800000', weight: 3, opacity: 0.7}).addTo(previewLayer);
+    let linePts = coords.map(c => [c.lat, c.lon]);
+    if (forceLoop && coords.length > 1) {
+        linePts.push([coords[0].lat, coords[0].lon]); // 只有功能1顯示連回起點的線
+    }
     
-    // 畫點與標籤
+    L.polyline(linePts, {color: '#800000', weight: 3, opacity: 0.7}).addTo(previewLayer);
+    
     coords.forEach((c, i) => {
         L.circleMarker([c.lat, c.lon], {color: '#FF85A1', radius: 4}).addTo(previewLayer)
             .bindTooltip((i+1).toString(), {permanent: true, direction: 'right', className: 'leaflet-tooltip-own'});
     });
     
-    map.fitBounds(L.polyline(pts).getBounds(), {padding: [30, 30]});
+    map.fitBounds(L.polyline(linePts).getBounds(), {padding: [30, 30]});
 }
 
 function updatePreviewFromText() {
     const input = document.getElementById('coordsInput').value.trim();
+    const mode = document.getElementById('mode').value;
     const coords = input.split('\n').map(l => {
         const p = l.split(/[\s,]+/);
         return p.length >= 2 ? { lat: parseFloat(p[0]), lon: parseFloat(p[1]) } : null;
     }).filter(c => c !== null);
-    updatePreview(coords);
+    
+    // 只有功能1 (flower_pass2) 在預覽時顯示環狀
+    updatePreview(coords, mode === 'flower_pass2');
 }
 
-// 功能 4：核心轉換與自動下載
 function handleConversion(input) {
     const file = input.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(e) {
         const parser = new DOMParser();
         const xml = parser.parseFromString(e.target.result, "text/xml");
-        
-        // 抓取所有點
         let nodes = Array.from(xml.querySelectorAll("rtept, wpt, trkpt"));
         let coords = nodes.map(n => ({
-            lat: parseFloat(n.getAttribute("lat")),
-            lon: parseFloat(n.getAttribute("lon")),
+            lat: parseFloat(n.getAttribute("lat")), lon: parseFloat(n.getAttribute("lon")),
             name: n.querySelector("name") ? n.querySelector("name").textContent : ""
         })).filter(c => !isNaN(c.lat));
 
-        if (coords.length === 0) {
-            alert("找不到點位！");
-            return;
-        }
-
-        updatePreview(coords);
-
-        const mode = document.getElementById('convMode').value;
-        const fileName = file.name.replace(".gpx", "");
+        if (coords.length === 0) return;
+        updatePreview(coords, false); // 功能4不顯示環狀
         
-        // 組成 GPX 字串
+        const mode = document.getElementById('convMode').value;
         let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Gemini" xmlns="http://www.topografix.com/GPX/1/1">`;
         if (mode === 'rte2wpt') {
-            coords.forEach((c, i) => {
-                gpx += `\n<wpt lat="${c.lat}" lon="${c.lon}"><name>${c.name || 'T'+(i+1)}</name></wpt>`;
-            });
+            coords.forEach((c, i) => { gpx += `\n  <wpt lat="${c.lat}" lon="${c.lon}"><name>${c.name || 'P'+(i+1)}</name></wpt>`; });
         } else {
-            gpx += `\n<rte><name>${fileName}</name>`;
-            coords.forEach(c => gpx += `\n<rtept lat="${c.lat}" lon="${c.lon}"></rtept>`);
-            gpx += `\n</rte>`;
+            gpx += `\n  <rte>\n    <name>${file.name.replace(".gpx","")}</name>`;
+            coords.forEach(c => { gpx += `\n    <rtept lat="${c.lat}" lon="${c.lon}"></rtept>`; });
+            gpx += `\n  </rte>`;
         }
         gpx += `\n</gpx>`;
-
-        // 觸發下載
-        triggerDownload(gpx, fileName + (mode === 'rte2wpt' ? "_to_wpt.gpx" : "_to_rte.gpx"));
-        document.getElementById('fileStatus').innerText = `✅ 成功轉換 ${coords.length} 點！`;
+        triggerDownload(gpx, file.name.replace(".gpx", "") + "_Conv.gpx");
+        document.getElementById('fileStatus').innerText = `✅ 轉換完成！`;
     };
     reader.readAsText(file, "UTF-8");
 }
 
-function triggerDownload(content, name) {
-    const blob = new Blob([content], { type: 'application/gpx+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-}
-
-// 功能 1~3 的下載邏輯
 function generateGPX() {
     const input = document.getElementById('coordsInput').value.trim();
-    const locName = document.getElementById('locName').value || "Loc";
     const mode = document.getElementById('mode').value;
     const radius = parseFloat(document.getElementById('radius').value) || 30;
+    const locName = document.getElementById('locName').value;
+    const locID = document.getElementById('locID').value;
     
     let coords = input.split('\n').map(l => {
         const p = l.split(/[\s,]+/);
         return p.length >= 2 ? { lat: parseFloat(p[0]), lon: parseFloat(p[1]) } : null;
     }).filter(c => c !== null);
 
-    if (coords.length === 0) { alert("請輸入座標！"); return; }
+    if (coords.length === 0) return;
 
     let body = "";
+    body += `<wpt lat="${coords[0].lat}" lon="${coords[0].lon}"><name>START</name></wpt>\n`;
+    
     coords.forEach((c, i) => {
-        if (mode.includes('flower')) {
+        if (mode === 'flower_pass2' || mode === 'flower_only') {
             body += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-C</name></wpt>\n`;
             const latOff = radius / 111000;
             const lonOff = radius / (111000 * Math.cos(c.lat * Math.PI / 180));
@@ -189,7 +160,7 @@ function generateGPX() {
                 const rad = (90 - a) * Math.PI / 180;
                 body += `<wpt lat="${(c.lat + latOff * Math.sin(rad)).toFixed(7)}" lon="${(c.lon + lonOff * Math.cos(rad)).toFixed(7)}"><name>P${i+1}-F${j+1}</name></wpt>\n`;
             });
-            body += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-E</name></wpt>\n`;
+            body += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-Back</name></wpt>\n`;
         } else {
             body += `<wpt lat="${c.lat}" lon="${c.lon}"><name>T${i+1}</name></wpt>\n`;
         }
@@ -197,10 +168,23 @@ function generateGPX() {
 
     if (mode === 'flower_pass2') {
         coords.forEach((c, i) => body += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-2nd</name></wpt>\n`);
+        // 只有功能1 (flower_pass2) 補上回頭點
+        body += `<wpt lat="${coords[0].lat}" lon="${coords[0].lon}"><name>LOOP_BACK</name></wpt>\n`;
     }
 
     const fullXml = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n${body}</gpx>`;
-    triggerDownload(fullXml, `${locName}.gpx`);
+    triggerDownload(fullXml, `${locName}${locID}.gpx`);
+}
+
+function triggerDownload(content, name) {
+    const blob = new Blob([content], { type: 'application/gpx+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 </script>
 </body>
