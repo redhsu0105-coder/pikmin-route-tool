@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌈 GPX 夢幻地圖助手 - 專業緩衝版</title>
+    <title>🌈 GPX 夢幻地圖助手 - 時空偵測版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -24,10 +24,12 @@
         select, input { padding: 12px; border-radius: 12px; border: 2px solid #F0F0F0; width: 100%; box-sizing: border-box; background: #FAFAFA; outline: none; }
         button.main-btn { background: linear-gradient(135deg, var(--primary), #FF6B81); color: white; border: none; cursor: pointer; font-weight: bold; padding: 14px; border-radius: 12px; font-size: 16px; width: 100%; margin-top: 10px; box-shadow: 0 5px 15px rgba(255,133,161,0.3); transition: 0.3s; }
         button.main-btn:hover { transform: translateY(-2px); opacity: 0.9; }
-        #map { height: 350px; width: 100%; border-radius: 20px; border: 3px solid #FFD1DC; margin-top: 10px; z-index: 1; }
-        .file-box { background: #FFF9FA; border: 3px dashed #FFD1DC; padding: 30px; text-align: center; border-radius: 20px; cursor: pointer; color: var(--primary); font-weight: bold; transition: 0.3s; }
-        .file-box:hover { background: #FFE4E1; }
-        #fileStatus { margin-top: 15px; font-weight: bold; text-align: center; color: #50C878; min-height: 1.2em; }
+        #map { height: 300px; width: 100%; border-radius: 20px; border: 3px solid #FFD1DC; margin-top: 10px; z-index: 1; }
+        .info-panel { background: #FFF9FA; border: 2px solid #FFD1DC; padding: 15px; border-radius: 15px; margin: 10px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; }
+        .info-item { color: #886666; }
+        .info-item b { color: var(--primary); }
+        .file-box { background: #FFF9FA; border: 3px dashed #FFD1DC; padding: 30px; text-align: center; border-radius: 20px; cursor: pointer; color: var(--primary); font-weight: bold; }
+        #fileStatus { margin-top: 15px; font-weight: bold; text-align: center; color: #50C878; }
         .footer-info { font-size: 0.8em; color: #BBAAAA; text-align: center; margin-top: 20px; }
         .leaflet-tooltip-own { background: rgba(255, 255, 255, 0.8); border: 1px solid var(--primary); color: var(--primary); font-weight: bold; font-size: 11px; padding: 1px 4px; border-radius: 4px; }
     </style>
@@ -36,24 +38,31 @@
 
 <div class="card">
     <h2>
-        <span>🗺️ 路徑即時預覽 (酒紅線條)</span>
-        <button class="btn-pop" onclick="openFullMap()">🔍 全螢幕開啟地圖</button>
+        <span>🗺️ 即時預覽與資訊</span>
+        <button class="btn-pop" onclick="openFullMap()">🔍 全螢幕地圖</button>
     </h2>
     <div id="map"></div>
+    
+    <div class="info-panel" id="analysisPanel">
+        <div class="info-item">🌍 偵測國家：<b id="detectedCountry">--</b></div>
+        <div class="info-item">⏰ 與台時差：<b id="timeDiff">--</b></div>
+        <div class="info-item">📏 總里程數：<b id="totalDist">0.00</b> km</div>
+        <div class="info-item">⏱️ 預計耗時：<b id="estTime">0</b> 分 <b id="estSec">0</b> 秒</div>
+    </div>
 </div>
 
 <div class="card">
-    <h2>🌺 功能 1~3：種花路徑產生器</h2>
+    <h2>🌺 功能 1~3：種花產生器</h2>
     <label>🍭 請貼入原始座標 (緯度, 經度):</label>
-    <textarea id="coordsInput" oninput="updatePreviewFromText()" placeholder="例如：39.9334, 32.8597"></textarea>
+    <textarea id="coordsInput" oninput="handleInputChange()" placeholder="例如：39.9334, 32.8597"></textarea>
 
     <div class="controls">
         <div><label>📍 國家地名</label><input type="text" id="locName" value="地點"></div>
         <div><label>🆔 編號</label><input type="text" id="locID" value="01"></div>
-        <div><label>📏 種花半徑 (m)</label><input type="number" id="radius" value="30" oninput="updatePreviewFromText()"></div>
+        <div><label>📏 種花半徑 (m)</label><input type="number" id="radius" value="30" oninput="handleInputChange()"></div>
         <div>
             <label>🎡 路徑模式</label>
-            <select id="mode" onchange="updatePreviewFromText()">
+            <select id="mode" onchange="handleInputChange()">
                 <option value="flower_pass2">功能 1：種花 + 回訪 (Z串) ✨</option>
                 <option value="flower_only">功能 2：純種花模式 (Z) 🌺</option>
                 <option value="pass_only">功能 3：純座標路徑 (果) 🚶</option>
@@ -78,19 +87,47 @@
     </div>
 </div>
 
-<p class="footer-info">☁️ 功能1保留中心起點 ‧ 功能2/3啟用 45m 緩衝 ‧ 酒紅路徑預覽 ☁️</p>
+<p class="footer-info">☁️ 支援 $19.5\text{km/h}$ 時速預估 ‧ 自動時差偵測 ‧ 專業路徑算法 ☁️</p>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 var currentCoords = [];
 var currentPathPoints = [];
 var uploadedFileName = "";
+const TARGET_SPEED = 19.5; // km/h
 
 var map = L.map('map').setView([25.033, 121.565], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 var previewLayer = L.layerGroup().addTo(map);
 
-// 計算延伸緩衝點的邏輯
+// 計算距離 (Haversine formula)
+function getDistance(p1, p2) {
+    const R = 6371e3; 
+    const dLat = (p2[0] - p1[0]) * Math.PI / 180;
+    const dLon = (p2[1] - p1[1]) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(p1[0] * Math.PI / 180) * Math.cos(p2[0] * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// 偵測國家與時差
+async function detectLocationInfo(lat, lon) {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
+        const data = await response.json();
+        const country = data.address.country || "未知";
+        document.getElementById('detectedCountry').innerText = country;
+        
+        // 簡單經度時差估算 (15度一小時)
+        const offset = Math.round(lon / 15);
+        const diff = offset - 8; // 台灣是 UTC+8
+        document.getElementById('timeDiff').innerText = (diff >= 0 ? "+" : "") + diff + " 小時";
+    } catch (e) {
+        document.getElementById('detectedCountry').innerText = "網路異常";
+    }
+}
+
 function calculateBuffers(coords, dist) {
     if (coords.length < 1) return null;
     const p1 = coords[0];
@@ -98,17 +135,33 @@ function calculateBuffers(coords, dist) {
     const pEnd = coords[coords.length - 1];
     const pPenult = coords.length > 1 ? coords[coords.length - 2] : { lat: pEnd.lat - 0.0001, lon: pEnd.lon };
 
-    function getBuffer(start, next, distance, isEnd = false) {
+    function getBuffer(start, next, distance) {
         const dy = next.lat - start.lat;
         const dx = (next.lon - start.lon) * Math.cos(start.lat * Math.PI / 180);
         const angle = Math.atan2(dy, dx);
-        const factor = isEnd ? 1 : -1;
         return {
-            lat: start.lat + (factor * Math.sin(angle) * (distance / 111000)),
-            lon: start.lon + (factor * Math.cos(angle) * (distance / (111000 * Math.cos(start.lat * Math.PI / 180))))
+            lat: start.lat - Math.sin(angle) * (distance / 111000),
+            lon: start.lon - Math.cos(angle) * (distance / (111000 * Math.cos(start.lat * Math.PI / 180)))
         };
     }
-    return { start: getBuffer(p1, p2, dist, false), end: getBuffer(pEnd, pPenult, dist, false) };
+    return { start: getBuffer(p1, p2, dist), end: getBuffer(pEnd, pPenult, dist) };
+}
+
+function handleInputChange() {
+    const input = document.getElementById('coordsInput').value.trim();
+    const mode = document.getElementById('mode').value;
+    const radius = parseFloat(document.getElementById('radius').value) || 30;
+    
+    const coords = input.split('\n').map(l => {
+        const p = l.split(/[\s,]+/);
+        return p.length >= 2 ? { lat: parseFloat(p[0]), lon: parseFloat(p[1]) } : null;
+    }).filter(c => c !== null);
+
+    if (coords.length > 0 && (currentCoords.length === 0 || coords[0].lat !== currentCoords[0].lat)) {
+        detectLocationInfo(coords[0].lat, coords[0].lon);
+    }
+    
+    updatePreview(coords, mode, radius);
 }
 
 function updatePreview(coords, mode, radius) {
@@ -117,7 +170,6 @@ function updatePreview(coords, mode, radius) {
     currentCoords = coords;
     if (coords.length === 0) return;
 
-    // 處理預覽線條起點
     if (mode === 'flower_pass2') {
         const mid = { lat: (coords[0].lat + coords[coords.length-1].lat) / 2, lon: (coords[0].lon + coords[coords.length-1].lon) / 2 };
         currentPathPoints.push([mid.lat, mid.lon]);
@@ -127,9 +179,7 @@ function updatePreview(coords, mode, radius) {
     }
 
     coords.forEach((c, i) => {
-        L.circleMarker([c.lat, c.lon], {color: '#FF85A1', radius: 4}).addTo(previewLayer)
-         .bindTooltip((mode === 'pass_only' ? 'T':'P')+(i+1), {permanent: true, className: 'leaflet-tooltip-own'});
-        
+        L.circleMarker([c.lat, c.lon], {color: '#FF85A1', radius: 4}).addTo(previewLayer);
         currentPathPoints.push([c.lat, c.lon]);
         if (mode.includes('flower')) {
             const latOff = radius / 111000;
@@ -151,25 +201,29 @@ function updatePreview(coords, mode, radius) {
         currentPathPoints.push([buffers.end.lat, buffers.end.lon]);
     }
 
+    // 計算總長度與時間
+    let totalMeters = 0;
+    for (let i = 0; i < currentPathPoints.length - 1; i++) {
+        totalMeters += getDistance(currentPathPoints[i], currentPathPoints[i+1]);
+    }
+    const km = totalMeters / 1000;
+    const hours = km / TARGET_SPEED;
+    const totalMinutes = hours * 60;
+    const mins = Math.floor(totalMinutes);
+    const secs = Math.round((totalMinutes - mins) * 60);
+
+    document.getElementById('totalDist').innerText = km.toFixed(2);
+    document.getElementById('estTime').innerText = mins;
+    document.getElementById('estSec').innerText = secs;
+
     var polyline = L.polyline(currentPathPoints, {color: '#800000', weight: 3}).addTo(previewLayer);
     map.fitBounds(polyline.getBounds(), {padding: [20, 20]});
-}
-
-function updatePreviewFromText() {
-    const input = document.getElementById('coordsInput').value.trim();
-    const mode = document.getElementById('mode').value;
-    const radius = parseFloat(document.getElementById('radius').value) || 30;
-    const coords = input.split('\n').map(l => {
-        const p = l.split(/[\s,]+/);
-        return p.length >= 2 ? { lat: parseFloat(p[0]), lon: parseFloat(p[1]) } : null;
-    }).filter(c => c !== null);
-    updatePreview(coords, mode, radius);
 }
 
 function generateGPX() {
     const mode = document.getElementById('mode').value;
     const radius = parseFloat(document.getElementById('radius').value) || 30;
-    if (currentCoords.length === 0) { alert("請先貼入座標！🌸"); return; }
+    if (currentCoords.length === 0) return alert("請先貼入座標！🌸");
     
     let content = "";
     if (mode === 'flower_pass2') {
@@ -211,6 +265,7 @@ function generateGPX() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
 }
 
+// 保持功能 4 邏輯
 function handleFileUpload(input) {
     const file = input.files[0];
     if (!file) return;
