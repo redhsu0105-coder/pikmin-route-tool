@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌈 GPX 夢幻地圖助手 - 精準城市版</title>
+    <title>🌈 GPX 夢幻地圖助手 - 三倍巡邏版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -71,7 +71,7 @@
         <div>
             <label>🎡 路徑模式</label>
             <select id="mode" onchange="handleInputChange()">
-                <option value="flower_pass2">功能 1：種花 + 回訪 (Z串) ✨</option>
+                <option value="flower_pass2">功能 1：種花 + 巡邏 2 次 ✨</option>
                 <option value="flower_only">功能 2：純種花模式 (Z) 🌺</option>
                 <option value="pass_only">功能 3：純座標路徑 (果) 🚶</option>
             </select>
@@ -123,7 +123,6 @@ async function detectLocationInfo(lat, lon) {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
         const data = await response.json();
         const addr = data.address;
-        // 優先順序：城市 > 城鎮 > 郊區 > 行政區
         const city = addr.city || addr.town || addr.village || addr.suburb || addr.county || "";
         const country = addr.country || "";
         const displayLoc = city ? `${city} , ${country}` : country;
@@ -186,6 +185,7 @@ function updatePreview(coords, mode, radius) {
         currentPathPoints.push([buffers.start.lat, buffers.start.lon]);
     }
 
+    // 第一遍：種花
     coords.forEach((c, i) => {
         const label = (mode === 'pass_only' ? 'T' : 'P') + (i + 1);
         L.circleMarker([c.lat, c.lon], {color: '#FF85A1', radius: 5, fillOpacity: 0.8})
@@ -204,8 +204,13 @@ function updatePreview(coords, mode, radius) {
         }
     });
 
+    // 功能 1：額外增加兩次巡邏預覽
     if (mode === 'flower_pass2') {
+        // 第 1 次回訪
         coords.forEach(c => currentPathPoints.push([c.lat, c.lon]));
+        // 第 2 次回訪
+        coords.forEach(c => currentPathPoints.push([c.lat, c.lon]));
+        
         const mid = { lat: (coords[0].lat + coords[coords.length-1].lat) / 2, lon: (coords[0].lon + coords[coords.length-1].lon) / 2 };
         currentPathPoints.push([mid.lat, mid.lon]);
     } else {
@@ -240,6 +245,8 @@ function generateGPX() {
     if (mode === 'flower_pass2') {
         const mid = { lat: (currentCoords[0].lat + currentCoords[currentCoords.length-1].lat) / 2, lon: (currentCoords[0].lon + currentCoords[currentCoords.length-1].lon) / 2 };
         content += `<wpt lat="${mid.lat.toFixed(7)}" lon="${mid.lon.toFixed(7)}"><name>START</name></wpt>\n`;
+        
+        // 階段 1: 種花
         currentCoords.forEach((c, i) => {
             const latOff = radius / 111000;
             const lonOff = radius / (111000 * Math.cos(c.lat * Math.PI / 180));
@@ -248,9 +255,19 @@ function generateGPX() {
                 const rad = (90 - a) * Math.PI / 180;
                 content += `<wpt lat="${(c.lat + latOff * Math.sin(rad)).toFixed(7)}" lon="${(c.lon + lonOff * Math.cos(rad)).toFixed(7)}"><name>P${i+1}-F${j+1}</name></wpt>\n`;
             });
-            content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-B</name></wpt>\n`;
+            content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-Back</name></wpt>\n`;
         });
-        currentCoords.forEach((c, i) => content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-2nd</name></wpt>\n`);
+
+        // 階段 2: 巡邏第 1 次
+        currentCoords.forEach((c, i) => {
+            content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-Pass1</name></wpt>\n`;
+        });
+
+        // 階段 3: 巡邏第 2 次
+        currentCoords.forEach((c, i) => {
+            content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-Pass2</name></wpt>\n`;
+        });
+
         content += `<wpt lat="${mid.lat.toFixed(7)}" lon="${mid.lon.toFixed(7)}"><name>END</name></wpt>\n`;
     } else {
         const buf = calculateBuffers(currentCoords, 45);
@@ -270,7 +287,8 @@ function generateGPX() {
         content += `<wpt lat="${buf.end.lat.toFixed(7)}" lon="${buf.end.lon.toFixed(7)}"><name>BUFFER_END</name></wpt>\n`;
     }
 
-    const name = `${document.getElementById('locName').value}${document.getElementById('locID').value}_${currentCoords.length}苗${(mode==="pass_only"?"_果": (mode==="flower_pass2"?"_Z串":"_Z"))}.gpx`;
+    const modeName = (mode==="pass_only"?"_果": (mode==="flower_pass2"?"_Z雙回訪":"_Z"));
+    const name = `${document.getElementById('locName').value}${document.getElementById('locID').value}_${currentCoords.length}苗${modeName}.gpx`;
     const full = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Gemini" xmlns="http://www.topografix.com/GPX/1/1">\n${content}</gpx>`;
     const blob = new Blob([full], { type: 'application/gpx+xml' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
