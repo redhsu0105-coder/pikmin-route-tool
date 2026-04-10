@@ -55,8 +55,8 @@
         <div style="grid-column: span 2;">
             <label>🎡 路徑模式</label>
             <select id="mode" onchange="handleInputChange()">
-                <option value="flower_pass2">功能 1：種花 + 巡邏 2 次 ✨</option>
-                <option value="flower_only">功能 2：純種花模式 (Z) 🌺</option>
+                <option value="flower_pass2">功能 1：種花(環) + 直線2次 ✨</option>
+                <option value="flower_only">功能 2：純種花模式 (環)) 🌺</option>
                 <option value="pass_only">功能 3：純座標路徑 (果) 🚶</option>
             </select>
         </div>
@@ -66,7 +66,7 @@
 
 <div class="card">
     <h2>☁️ 功能 4：GPX 格式轉換大師</h2>
-    <div class="file-box" onclick="document.getElementById('fileInput').click()">✨ 點擊上傳 GPX 進行轉換 ✨<input type="file" id="fileInput" accept=".gpx" style="display:none" onchange="handleFileUpload(this)"></div>
+    <div class="file-box" onclick="document.getElementById('fileInput').click()">✨ 點擊上傳 GPX ✨<input type="file" id="fileInput" accept=".gpx" style="display:none" onchange="handleFileUpload(this)"></div>
     <div id="fileStatus"></div>
     <div id="convertControls" style="display: none; margin-top: 15px; gap: 15px;" class="controls">
         <button class="main-btn" style="background: var(--secondary); margin-top:0;" onclick="convertAndDownload('wpt')">💾 轉 WPT</button>
@@ -90,7 +90,6 @@ function getDistance(p1, p2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// 修正：現在精準外推 75M
 function extendPoint(p1, p2, distMeters) {
     const dLat = p1[0] - p2[0], dLon = p1[1] - p2[1];
     const actualDist = getDistance(p1, p2);
@@ -106,7 +105,7 @@ async function detectLocationInfo(lat, lon) {
         const addr = data.address; const city = addr.city || addr.town || addr.village || "";
         document.getElementById('detectedLocation').innerText = city ? `${city}, ${addr.country}` : addr.country;
         const diff = Math.round(lon/15)-8; document.getElementById('timeDiff').innerText = (diff>=0?"+":"")+diff+" 小時";
-    } catch(e) { document.getElementById('detectedLocation').innerText = "自動偵測中..."; }
+    } catch(e) { document.getElementById('detectedLocation').innerText = "偵測中..."; }
 }
 
 function handleInputChange() {
@@ -122,14 +121,12 @@ function updatePreview(coords, mode, radius) {
     previewLayer.clearLayers(); currentPathPoints = []; currentCoords = coords;
     if(coords.length === 0) return;
 
-    // 起點緩衝 (功能 2,3 使用 75M)
+    // 起點緩衝：只有功能 1 (中心) 與 功能 3 (75M) 需要
     if(mode === 'flower_pass2') {
         const mid = {lat:(coords[0].lat + coords[coords.length-1].lat)/2, lon:(coords[0].lon + coords[coords.length-1].lon)/2};
         currentPathPoints.push([mid.lat, mid.lon]);
-    } else if(coords.length >= 2) {
+    } else if(mode === 'pass_only' && coords.length >= 2) {
         currentPathPoints.push(extendPoint([coords[0].lat, coords[0].lon], [coords[1].lat, coords[1].lon], 75));
-    } else {
-        currentPathPoints.push([coords[0].lat - 0.0007, coords[0].lon]);
     }
 
     coords.forEach((c, i) => {
@@ -147,12 +144,12 @@ function updatePreview(coords, mode, radius) {
         }
     });
 
-    // 終點緩衝 (功能 2,3 使用 75M)
+    // 終點緩衝：只有功能 1 (巡邏) 與 功能 3 (75M) 需要
     if(mode === 'flower_pass2') { 
         for(let k=0; k<2; k++) coords.forEach(c => currentPathPoints.push([c.lat, c.lon]));
         const mid = {lat:(coords[0].lat + coords[coords.length-1].lat)/2, lon:(coords[0].lon + coords[coords.length-1].lon)/2};
         currentPathPoints.push([mid.lat, mid.lon]);
-    } else if(coords.length >= 2) {
+    } else if(mode === 'pass_only' && coords.length >= 2) {
         currentPathPoints.push(extendPoint([coords[coords.length-1].lat, coords[coords.length-1].lon], [coords[coords.length-2].lat, coords[coords.length-2].lon], 75));
     }
 
@@ -171,7 +168,7 @@ function generateGPX() {
     if(mode === 'flower_pass2') {
         const mid = {lat:(currentCoords[0].lat + currentCoords[currentCoords.length-1].lat)/2, lon:(currentCoords[0].lon + currentCoords[currentCoords.length-1].lon)/2};
         content += `<wpt lat="${mid.lat}" lon="${mid.lon}"><name>START</name></wpt>\n`;
-    } else if(currentCoords.length >= 2) {
+    } else if(mode === 'pass_only' && currentCoords.length >= 2) {
         const sb = extendPoint([currentCoords[0].lat, currentCoords[0].lon], [currentCoords[1].lat, currentCoords[1].lon], 75);
         content += `<wpt lat="${sb[0].toFixed(7)}" lon="${sb[1].toFixed(7)}"><name>BUFFER_START</name></wpt>\n`;
     }
@@ -191,7 +188,7 @@ function generateGPX() {
         for(let j=1; j<=2; j++) currentCoords.forEach((c, i) => content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-R${j}</name></wpt>\n`); 
         const mid = {lat:(currentCoords[0].lat + currentCoords[currentCoords.length-1].lat)/2, lon:(currentCoords[0].lon + currentCoords[currentCoords.length-1].lon)/2};
         content += `<wpt lat="${mid.lat}" lon="${mid.lon}"><name>END</name></wpt>\n`;
-    } else if(currentCoords.length >= 2) {
+    } else if(mode === 'pass_only' && currentCoords.length >= 2) {
         const eb = extendPoint([currentCoords[currentCoords.length-1].lat, currentCoords[currentCoords.length-1].lon], [currentCoords[currentCoords.length-2].lat, currentCoords[currentCoords.length-2].lon], 75);
         content += `<wpt lat="${eb[0].toFixed(7)}" lon="${eb[1].toFixed(7)}"><name>BUFFER_END</name></wpt>\n`;
     }
