@@ -8,14 +8,38 @@
     <style>
         :root { --primary: #FF85A1; --secondary: #77DDFF; --accent: #FFB347; --bg: #FFF5F7; --card-bg: #FFFFFF; }
         body { font-family: "Microsoft JhengHei", sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; background-color: var(--bg); color: #555; }
+        
         .card { background: var(--card-bg); padding: 25px; border-radius: 25px; box-shadow: 0 10px 25px rgba(255, 133, 161, 0.1); margin-bottom: 20px; border: 3px solid #FFD1DC; position: relative; }
         h2 { color: var(--primary); margin-top: 0; display: flex; align-items: center; gap: 10px; font-size: 1.4rem; justify-content: space-between; }
+        
+        .editor-container { position: relative; margin: 10px 0; }
+        .editor-tools { position: absolute; top: 10px; right: 15px; z-index: 10; display: flex; gap: 8px; }
+        .tool-btn { background: rgba(255, 255, 255, 0.9); border: 1px solid #FFD1DC; padding: 4px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; color: #FF85A1; font-weight: bold; transition: 0.2s; }
+        .tool-btn:hover { background: var(--primary); color: white; }
+
+        .editor-wrapper { display: flex; border: 2px solid #FFE4E1; border-radius: 15px; background: #FFF; overflow: hidden; height: 200px; }
+        .line-numbers { width: 40px; padding: 12px 0; text-align: center; background-color: #FFF5F7; color: #FF85A1; font-size: 14px; line-height: 1.5; font-family: 'Consolas', 'Monaco', monospace; user-select: none; border-right: 1px solid #FFE4E1; overflow: hidden; box-sizing: border-box; }
+
+        textarea { flex: 1; height: 100%; border: none !important; padding: 12px; box-sizing: border-box; outline: none; resize: none; font-size: 14px; line-height: 1.5; font-family: 'Consolas', 'Monaco', monospace; display: block; white-space: pre; overflow-y: auto; }
+
         .btn-pop { font-size: 0.6em; background: var(--secondary); color: white; padding: 5px 12px; border-radius: 20px; cursor: pointer; border: none; font-weight: bold; }
-        textarea { width: 100%; height: 120px; margin: 10px 0; border: 2px solid #FFE4E1; border-radius: 15px; padding: 12px; box-sizing: border-box; outline: none; }
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         label { display: block; font-size: 0.85em; color: #886666; margin-bottom: 5px; font-weight: bold; }
         select, input { padding: 12px; border-radius: 12px; border: 2px solid #F0F0F0; width: 100%; box-sizing: border-box; background: #FAFAFA; outline: none; }
-        button.main-btn { background: linear-gradient(135deg, var(--primary), #FF6B81); color: white; border: none; cursor: pointer; font-weight: bold; padding: 14px; border-radius: 12px; font-size: 16px; width: 100%; margin-top: 10px; box-shadow: 0 5px 15px rgba(255,133,161,0.3); transition: 0.3s; }
+        
+        .switch-container { display: flex; align-items: center; gap: 10px; grid-column: span 2; background: #FFF9FA; padding: 10px 15px; border-radius: 12px; border: 1px solid #FFE4E1; cursor: pointer; }
+        .switch-container input { width: auto; cursor: pointer; }
+        .switch-label { font-size: 0.9em; font-weight: bold; color: var(--primary); }
+
+        /* 檔名預覽樣式 */
+        .filename-preview-box { grid-column: span 2; background: #f0f8ff; border: 1px solid #77DDFF; padding: 10px 15px; border-radius: 12px; margin-top: 5px; word-break: break-all; }
+        .filename-preview-box span { font-size: 0.85em; color: #555; display: block; margin-bottom: 3px; font-weight: bold; }
+        .filename-preview-box b { color: #2c7bb6; font-family: 'Consolas', monospace; font-size: 0.95em; }
+
+        .btn-group { grid-column: span 2; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        button.main-btn { background: linear-gradient(135deg, var(--primary), #FF6B81); color: white; border: none; cursor: pointer; font-weight: bold; padding: 14px; border-radius: 12px; font-size: 15px; flex: 1; min-width: 150px; box-shadow: 0 5px 15px rgba(255,133,161,0.3); transition: 0.3s; }
+        button.alt-btn { background: linear-gradient(135deg, #77DDFF, #44BBFF); color: white; border: none; cursor: pointer; font-weight: bold; padding: 14px; border-radius: 12px; font-size: 15px; flex: 1; min-width: 150px; box-shadow: 0 5px 15px rgba(119,221,255,0.3); transition: 0.3s; }
+        
         #map { height: 300px; width: 100%; border-radius: 20px; border: 3px solid #FFD1DC; margin-top: 10px; z-index: 1; }
         .info-panel { background: #FFF9FA; border: 2px solid #FFD1DC; padding: 15px; border-radius: 15px; margin: 10px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; }
         .info-item b { color: var(--primary); }
@@ -38,29 +62,49 @@
 </div>
 
 <div class="card">
-    <h2>🌺 功能 1~3：種花產生器</h2>
-    <textarea id="coordsInput" oninput="handleInputChange()" placeholder="貼入座標 (緯度, 經度)"></textarea>
-    <div class="controls">
-        <div>
-            <label>👤 人名</label>
-            <select id="userName" onchange="toggleOtherName()">
-                <option value="0嫿">0嫿</option><option value="1Corn">1Corn</option><option value="2Ht">2Ht</option><option value="3恰">3恰</option><option value="other">4其他</option>
-            </select>
+    <h2>🌺 種花產生器</h2>
+    
+    <div class="editor-container">
+        <div class="editor-tools">
+            <button class="tool-btn" onclick="copyCoords()">📋 複製</button>
+            <button class="tool-btn" onclick="clearCoords()">🗑️ 清空</button>
         </div>
-        <div id="otherNameDiv" style="display:none;"><label>✍️ 自定義名字</label><input type="text" id="customName"></div>
-        <div><label>📍 國家地名</label><input type="text" id="locName" value="地點"></div>
-        <div><label>🆔 編號</label><input type="text" id="locID" value="01"></div>
-        <div><label>🏙️ 都市名</label><input type="text" id="cityName" value="都市"></div>
+        <div class="editor-wrapper">
+            <div class="line-numbers" id="lineNumbers">1</div>
+            <textarea id="coordsInput" oninput="handleInputWrapper()" onscroll="syncScroll()" placeholder="貼入座標 (緯度, 經度)"></textarea>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label class="switch-container">
+            <input type="checkbox" id="reverseOrder" onchange="handleInputChange()">
+            <span class="switch-label">🔄 座標倒序處理 (從最後一個點開始)</span>
+        </label>
+
+        <div><label>👤 人名</label><select id="userName" onchange="toggleOtherName(); handleInputChange();"><option value="0嫿">0嫿</option><option value="1Corn">1Corn</option><option value="2Ht">2Ht</option><option value="3恰">3恰</option><option value="other">4其他</option></select></div>
+        <div id="otherNameDiv" style="display:none;"><label>✍️ 自定義名字</label><input type="text" id="customName" oninput="handleInputChange()"></div>
+        <div><label>📍 國家地名</label><input type="text" id="locName" value="地點" oninput="handleInputChange()"></div>
+        <div><label>🆔 編號</label><input type="text" id="locID" value="01" oninput="handleInputChange()"></div>
+        <div><label>🏙️ 都市名</label><input type="text" id="cityName" value="都市" oninput="handleInputChange()"></div>
         <div><label>📏 半徑(m)</label><input type="number" id="radius" value="30" oninput="handleInputChange()"></div>
         <div style="grid-column: span 2;">
             <label>🎡 路徑模式</label>
             <select id="mode" onchange="handleInputChange()">
                 <option value="flower_pass2">功能 1：種花(環) + 直線2次 ✨</option>
-                <option value="flower_only">功能 2：純種花模式 (環)) 🌺</option>
+                <option value="flower_only">功能 2：純種花模式 (環) 🌺</option>
                 <option value="pass_only">功能 3：純座標路徑 (果) 🚶</option>
             </select>
         </div>
-        <div style="grid-column: span 2;"><button class="main-btn" onclick="generateGPX()">🎀 下載自定義 GPX</button></div>
+
+        <div class="filename-preview-box">
+            <span>📝 預覽檔名：</span>
+            <b id="filenamePreview">--</b>
+        </div>
+        
+        <div class="btn-group">
+            <button class="main-btn" onclick="generateGPX()">🎀 下載自定義 GPX</button>
+            <button class="alt-btn" onclick="downloadCoordsTxt()">📄 下載座標 TXT</button>
+        </div>
     </div>
 </div>
 
@@ -82,6 +126,18 @@ var map = L.map('map').setView([25.03, 121.5], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 var previewLayer = L.layerGroup().addTo(map);
 
+function handleInputWrapper() { updateLineNumbers(); handleInputChange(); }
+function updateLineNumbers() {
+    const textarea = document.getElementById('coordsInput'); const lineNumbers = document.getElementById('lineNumbers');
+    const lines = textarea.value.split('\n').length; let numberHTML = '';
+    for (let i = 1; i <= lines; i++) { numberHTML += `<div>${i}</div>`; }
+    lineNumbers.innerHTML = numberHTML; syncScroll();
+}
+function syncScroll() { const textarea = document.getElementById('coordsInput'); const lineNumbers = document.getElementById('lineNumbers'); lineNumbers.scrollTop = textarea.scrollTop; }
+
+function copyCoords() { const textarea = document.getElementById('coordsInput'); if (!textarea.value.trim()) return; textarea.select(); document.execCommand('copy'); alert("座標已複製！✨"); }
+function clearCoords() { if (!confirm("確定要清空嗎？")) return; document.getElementById('coordsInput').value = ""; handleInputWrapper(); }
+
 function toggleOtherName() { document.getElementById('otherNameDiv').style.display = (document.getElementById('userName').value === 'other') ? 'block' : 'none'; }
 
 function getDistance(p1, p2) {
@@ -91,140 +147,142 @@ function getDistance(p1, p2) {
 }
 
 function extendPoint(p1, p2, distMeters) {
-    const dLat = p1[0] - p2[0], dLon = p1[1] - p2[1];
-    const actualDist = getDistance(p1, p2);
-    if(actualDist === 0) return p1;
-    const ratio = distMeters / actualDist;
+    const dLat = p1[0] - p2[0], dLon = p1[1] - p2[1]; const actualDist = getDistance(p1, p2);
+    if(actualDist === 0) return p1; const ratio = distMeters / actualDist;
     return [p1[0] + dLat * ratio, p1[1] + dLon * ratio];
 }
 
 async function detectLocationInfo(lat, lon) {
     try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
-        const data = await res.json();
-        const addr = data.address; const city = addr.city || addr.town || addr.village || "";
+        const data = await res.json(); const addr = data.address; const city = addr.city || addr.town || addr.village || "";
         document.getElementById('detectedLocation').innerText = city ? `${city}, ${addr.country}` : addr.country;
         const diff = Math.round(lon/15)-8; document.getElementById('timeDiff').innerText = (diff>=0?"+":"")+diff+" 小時";
     } catch(e) { document.getElementById('detectedLocation').innerText = "偵測中..."; }
 }
 
 function handleInputChange() {
-    const input = document.getElementById('coordsInput').value.trim(), mode = document.getElementById('mode').value, radius = parseFloat(document.getElementById('radius').value)||30;
-    const coords = input.split('\n').map(l => {
-        const p = l.split(/[\s,]+/); return p.length>=2 ? {lat:parseFloat(p[0]), lon:parseFloat(p[1])} : null;
+    const input = document.getElementById('coordsInput').value.trim();
+    const mode = document.getElementById('mode').value;
+    const radius = parseFloat(document.getElementById('radius').value)||30;
+    const isReversed = document.getElementById('reverseOrder').checked;
+    
+    let coords = input.split('\n').map(l => {
+        const p = l.split(/[\s,]+/); return p.length>=2 ? {lat: p[0], lon: p[1], nLat: parseFloat(p[0]), nLon: parseFloat(p[1])} : null;
     }).filter(c => c!==null);
-    if(coords.length > 0 && (currentCoords.length===0 || coords[0].lat!==currentCoords[0].lat)) detectLocationInfo(coords[0].lat, coords[0].lon);
+
+    if (isReversed) coords.reverse();
+    currentCoords = coords;
+
+    // 更新預覽檔名
+    const modeSuffix = (mode==='flower_pass2'?'_環串':(mode==='flower_only'?'_環':'(果)'));
+    document.getElementById('filenamePreview').innerText = getCommonFileName(modeSuffix);
+
+    if (coords.length === 0) { previewLayer.clearLayers(); return; }
+    detectLocationInfo(coords[0].nLat, coords[0].nLon);
     updatePreview(coords, mode, radius);
 }
 
 function updatePreview(coords, mode, radius) {
-    previewLayer.clearLayers(); currentPathPoints = []; currentCoords = coords;
-    if(coords.length === 0) return;
-
-    // 起點緩衝：只有功能 1 (中心) 與 功能 3 (75M) 需要
+    previewLayer.clearLayers(); currentPathPoints = [];
     if(mode === 'flower_pass2') {
-        const mid = {lat:(coords[0].lat + coords[coords.length-1].lat)/2, lon:(coords[0].lon + coords[coords.length-1].lon)/2};
+        const mid = {lat:(coords[0].nLat + coords[coords.length-1].nLat)/2, lon:(coords[0].nLon + coords[coords.length-1].nLon)/2};
         currentPathPoints.push([mid.lat, mid.lon]);
     } else if(mode === 'pass_only' && coords.length >= 2) {
-        currentPathPoints.push(extendPoint([coords[0].lat, coords[0].lon], [coords[1].lat, coords[1].lon], 75));
+        currentPathPoints.push(extendPoint([coords[0].nLat, coords[0].nLon], [coords[1].nLat, coords[1].nLon], 75));
     }
-
     coords.forEach((c, i) => {
-        L.circleMarker([c.lat, c.lon], {color: '#FF85A1', radius: 5, fillOpacity: 0.8})
-         .addTo(previewLayer)
-         .bindTooltip((mode === 'pass_only' ? 'T' : 'P') + (i + 1), {permanent: true, direction: 'right', className: 'leaflet-tooltip-own', offset: [5, 0]});
-
-        currentPathPoints.push([c.lat, c.lon]);
+        L.circleMarker([c.nLat, c.nLon], {color: '#FF85A1', radius: 5, fillOpacity: 0.8}).addTo(previewLayer).bindTooltip((mode === 'pass_only' ? 'T' : 'P') + (i + 1), {permanent: true, direction: 'right', className: 'leaflet-tooltip-own', offset: [5, 0]});
+        currentPathPoints.push([c.nLat, c.nLon]);
         if(mode.includes('flower')) {
-            const latOff = radius/111000, lonOff = radius/(111000*Math.cos(c.lat*Math.PI/180));
-            [0, 60, 120, 180, 240, 300, 360].forEach(a => {
-                const rad = (90-a)*Math.PI/180; currentPathPoints.push([c.lat+latOff*Math.sin(rad), c.lon+lonOff*Math.cos(rad)]);
-            });
-            currentPathPoints.push([c.lat, c.lon]);
+            const latOff = radius/111000, lonOff = radius/(111000*Math.cos(c.nLat*Math.PI/180));
+            [0, 60, 120, 180, 240, 300, 360].forEach(a => { const rad = (90-a)*Math.PI/180; currentPathPoints.push([c.nLat+latOff*Math.sin(rad), c.nLon+lonOff*Math.cos(rad)]); });
+            currentPathPoints.push([c.nLat, c.nLon]);
         }
     });
-
-    // 終點緩衝：只有功能 1 (巡邏) 與 功能 3 (75M) 需要
     if(mode === 'flower_pass2') { 
-        for(let k=0; k<2; k++) coords.forEach(c => currentPathPoints.push([c.lat, c.lon]));
-        const mid = {lat:(coords[0].lat + coords[coords.length-1].lat)/2, lon:(coords[0].lon + coords[coords.length-1].lon)/2};
+        for(let k=0; k<2; k++) coords.forEach(c => currentPathPoints.push([c.nLat, c.nLon]));
+        const mid = {lat:(coords[0].nLat + coords[coords.length-1].nLat)/2, lon:(coords[0].nLon + coords[coords.length-1].nLon)/2};
         currentPathPoints.push([mid.lat, mid.lon]);
     } else if(mode === 'pass_only' && coords.length >= 2) {
-        currentPathPoints.push(extendPoint([coords[coords.length-1].lat, coords[coords.length-1].lon], [coords[coords.length-2].lat, coords[coords.length-2].lon], 75));
+        currentPathPoints.push(extendPoint([coords[coords.length-1].nLat, coords[coords.length-1].nLon], [coords[coords.length-2].nLat, coords[coords.length-2].nLon], 75));
     }
-
     let totalM = 0; for(let i=0; i<currentPathPoints.length-1; i++) totalM += getDistance(currentPathPoints[i], currentPathPoints[i+1]);
     const km = totalM/1000, totalMin = (km/TARGET_SPEED)*60;
     document.getElementById('totalDist').innerText = km.toFixed(2); document.getElementById('estTime').innerText = Math.floor(totalMin); document.getElementById('estSec').innerText = Math.round((totalMin%1)*60);
-    const poly = L.polyline(currentPathPoints, {color: '#800000', weight: 2}).addTo(previewLayer); map.fitBounds(poly.getBounds());
+    const poly = L.polyline(currentPathPoints, {color: '#800000', weight: 2}).addTo(previewLayer); 
+    if(currentPathPoints.length > 0) map.fitBounds(poly.getBounds());
+}
+
+function getCommonFileName(modeSuffix) {
+    let nameVal = document.getElementById('userName').value; if(nameVal==='other') nameVal = document.getElementById('customName').value||"其他";
+    const isRev = document.getElementById('reverseOrder').checked ? '_倒序' : '';
+    return `${nameVal}_${document.getElementById('locName').value}${document.getElementById('locID').value}_${document.getElementById('cityName').value}_${currentCoords.length}苗${modeSuffix}${isRev}`;
 }
 
 function generateGPX() {
     if(currentCoords.length === 0) return alert("請貼入座標！");
     const mode = document.getElementById('mode').value, radius = parseFloat(document.getElementById('radius').value)||30;
-    let nameVal = document.getElementById('userName').value; if(nameVal==='other') nameVal = document.getElementById('customName').value||"其他";
     let content = "";
-
     if(mode === 'flower_pass2') {
-        const mid = {lat:(currentCoords[0].lat + currentCoords[currentCoords.length-1].lat)/2, lon:(currentCoords[0].lon + currentCoords[currentCoords.length-1].lon)/2};
+        const mid = {lat:(currentCoords[0].nLat + currentCoords[currentCoords.length-1].nLat)/2, lon:(currentCoords[0].nLon + currentCoords[currentCoords.length-1].nLon)/2};
         content += `<wpt lat="${mid.lat}" lon="${mid.lon}"><name>START</name></wpt>\n`;
     } else if(mode === 'pass_only' && currentCoords.length >= 2) {
-        const sb = extendPoint([currentCoords[0].lat, currentCoords[0].lon], [currentCoords[1].lat, currentCoords[1].lon], 75);
+        const sb = extendPoint([currentCoords[0].nLat, currentCoords[0].nLon], [currentCoords[1].nLat, currentCoords[1].nLon], 75);
         content += `<wpt lat="${sb[0].toFixed(7)}" lon="${sb[1].toFixed(7)}"><name>BUFFER_START</name></wpt>\n`;
     }
-
     currentCoords.forEach((c, i) => {
         content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-C</name></wpt>\n`;
         if(mode.includes('flower')) {
-            const latOff = radius/111000, lonOff = latOff / Math.cos(c.lat * Math.PI / 180);
-            [0, 60, 120, 180, 240, 300].forEach((a, j) => {
-                const rad = (90-a)*Math.PI/180; content += `<wpt lat="${(c.lat + latOff*Math.sin(rad)).toFixed(7)}" lon="${(c.lon + lonOff*Math.cos(rad)).toFixed(7)}"><name>P${i+1}-F${j+1}</name></wpt>\n`;
-            });
+            const latOff = radius/111000, lonOff = latOff / Math.cos(c.nLat * Math.PI / 180);
+            [0, 60, 120, 180, 240, 300].forEach((a, j) => { const rad = (90-a)*Math.PI/180; content += `<wpt lat="${(c.nLat + latOff*Math.sin(rad)).toFixed(7)}" lon="${(c.nLon + lonOff*Math.cos(rad)).toFixed(7)}"><name>P${i+1}-F${j+1}</name></wpt>\n`; });
             content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-B</name></wpt>\n`;
         }
     });
-
     if(mode === 'flower_pass2') { 
         for(let j=1; j<=2; j++) currentCoords.forEach((c, i) => content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}-R${j}</name></wpt>\n`); 
-        const mid = {lat:(currentCoords[0].lat + currentCoords[currentCoords.length-1].lat)/2, lon:(currentCoords[0].lon + currentCoords[currentCoords.length-1].lon)/2};
+        const mid = {lat:(currentCoords[0].nLat + currentCoords[currentCoords.length-1].nLat)/2, lon:(currentCoords[0].nLon + currentCoords[currentCoords.length-1].nLon)/2};
         content += `<wpt lat="${mid.lat}" lon="${mid.lon}"><name>END</name></wpt>\n`;
     } else if(mode === 'pass_only' && currentCoords.length >= 2) {
-        const eb = extendPoint([currentCoords[currentCoords.length-1].lat, currentCoords[currentCoords.length-1].lon], [currentCoords[currentCoords.length-2].lat, currentCoords[currentCoords.length-2].lon], 75);
+        const eb = extendPoint([currentCoords[currentCoords.length-1].nLat, currentCoords[currentCoords.length-1].nLon], [currentCoords[currentCoords.length-2].nLat, currentCoords[currentCoords.length-2].nLon], 75);
         content += `<wpt lat="${eb[0].toFixed(7)}" lon="${eb[1].toFixed(7)}"><name>BUFFER_END</name></wpt>\n`;
     }
-
-    const suffix = (mode==='flower_pass2'?'_環串':(mode==='flower_only'?'_環':'(果)'));
-    const fileName = `${nameVal}_${document.getElementById('locName').value}${document.getElementById('locID').value}_${document.getElementById('cityName').value}_${currentCoords.length}苗${suffix}.gpx`;
+    const modeSuffix = (mode==='flower_pass2'?'_環串':(mode==='flower_only'?'_環':'(果)'));
     const full = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Gemini" xmlns="http://www.topografix.com/GPX/1/1">\n${content}</gpx>`;
-    const blob = new Blob([full], {type:'application/gpx+xml'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click();
+    const blob = new Blob([full], {type:'application/gpx+xml'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = getCommonFileName(modeSuffix) + ".gpx"; a.click();
+}
+
+function downloadCoordsTxt() {
+    if(currentCoords.length === 0) return alert("請貼入座標！");
+    const mode = document.getElementById('mode').value; const modeSuffix = (mode==='flower_pass2'?'_環串':(mode==='flower_only'?'_環':'(果)'));
+    const fn = getCommonFileName(modeSuffix); let textContent = fn + "\n";
+    currentCoords.forEach(c => textContent += `${c.lat}, ${c.lon}\n`);
+    const blob = new Blob([textContent], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn + ".txt"; a.click();
 }
 
 function handleFileUpload(input) {
-    const file = input.files[0]; if(!file) return;
-    uploadedFileName = file.name.replace('.gpx', '');
-    const reader = new FileReader();
+    const file = input.files[0]; if(!file) return; uploadedFileName = file.name.replace('.gpx', ''); const reader = new FileReader();
     reader.onload = function(e) {
         const parser = new DOMParser(), xml = parser.parseFromString(e.target.result, "text/xml");
         let nodes = Array.from(xml.querySelectorAll("trkpt, rtept, wpt"));
-        const coords = nodes.map(n => ({lat: parseFloat(n.getAttribute("lat")), lon: parseFloat(n.getAttribute("lon"))}));
-        updatePreview(coords, 'pass_only', 0);
-        document.getElementById('fileStatus').innerText = `✅ 已載入 ${coords.length} 個點位`;
+        const coordString = nodes.map(n => `${n.getAttribute("lat")}, ${n.getAttribute("lon")}`).join('\n');
+        document.getElementById('coordsInput').value = coordString; handleInputWrapper(); 
+        document.getElementById('fileStatus').innerText = `✅ 已載入 ${nodes.length} 個點位`;
         document.getElementById('convertControls').style.display = 'grid';
-    };
-    reader.readAsText(file);
+    }; reader.readAsText(file);
 }
 
 function convertAndDownload(type) {
     let content = "";
-    if(type === 'wpt') { currentCoords.forEach((c, i) => content += `<wpt lat="${c.lat.toFixed(7)}" lon="${c.lon.toFixed(7)}"><name>P${i+1}</name></wpt>\n`); }
-    else { content += `<rte><name>Route</name>\n`; currentCoords.forEach((c, i) => content += `<rtept lat="${c.lat.toFixed(7)}" lon="${c.lon.toFixed(7)}"><name>${i+1}</name></rtept>\n`); content += `</rte>\n`; }
+    if(type === 'wpt') { currentCoords.forEach((c, i) => content += `<wpt lat="${c.lat}" lon="${c.lon}"><name>P${i+1}</name></wpt>\n`); }
+    else { content += `<rte><name>Route</name>\n`; currentCoords.forEach((c, i) => content += `<rtept lat="${c.lat}" lon="${c.lon}"><name>${i+1}</name></rtept>\n`); content += `</rte>\n`; }
     const full = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Gemini" xmlns="http://www.topografix.com/GPX/1/1">\n${content}</gpx>`;
     const blob = new Blob([full], {type:'application/gpx+xml'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${uploadedFileName}_Converted.gpx`; a.click();
 }
 
 function openFullMap() {
     const newWin = window.open("", "_blank");
-    newWin.document.write(`<html><body style="margin:0;"><div id="fMap" style="height:100vh;"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script>var fMap = L.map('fMap'); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(fMap); var poly = L.polyline(${JSON.stringify(currentPathPoints)}, {color: '#800000'}).addTo(fMap); fMap.fitBounds(poly.getBounds());<\/script></body></html>`);
+    newWin.document.write(`<html><body style="margin:0;"><div id="fMap" style="height:100vh;"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script>var fMap = L.map('fMap'); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(fMap); var poly = L.polyline(${JSON.stringify(currentPathPoints.map(p => [p[0], p[1]]))}, {color: '#800000'}).addTo(fMap); fMap.fitBounds(poly.getBounds());<\/script></body></html>`);
 }
 </script>
 </body>
